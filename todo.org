@@ -1,0 +1,186 @@
+* TODO [[./readme.md]]
+* TODO 誘導ミサイル
+Unityで誘導ミサイルを作る。
+誘導ミサイルは男のロマン。
+PID制御って言葉も最近思い出した。
+クォータニオンでもできるはず。
+良い感じの誘導ミサイルとは？
+簡単なところから始める。
+バリエーションを出す。
+板野サーカスにたいする憧れ。
+線形。
+まずは2Dでやってみる。
+それでもいろいろ難しい。
+誘導だから目標が動く必要がある。
+ねらって打つ。
+ミサイルだから加速させたい。
+加速すると当たらない。
+3D。
+ならクォータニオン。
+LookAt。
+テスト環境を作る。
+エクセルでグラフ。
+ねらって打つ。
+速度を指定する。
+法線。
+ベクトル。
+
+場を作る
+[[C:/Users/takeshi/git_missile/Missile/Assets/Scripts/GameController.cs]]
+[[C:/Users/takeshi/git_missile/Missile/Assets/Scripts/Louncher.cs]]
+[[C:/Users/takeshi/git_missile/Missile/Assets/Scripts/Missile.cs]]
+[[C:/Users/takeshi/git_missile/Missile/Assets/Scripts/Target.cs]]
+
+
+ミサイル。
+ライフを減らさないと無限に増えてしまう。
+
+すり抜けるようじゃ面白くない。
+コリジョンはもうついているのだから、イベントを書く。
+    void OnCollisionEnter()
+    {
+        Die();
+    }
+あれ？こない？？？
+あぁ、RigidBodyを忘れていてた。
+少なくともどっちかに必要なんだっけ...
+ミサイルは数が増える予定だから、Targetの方につける。
+
+早すぎるのか？
+速度リミットをつける。
+
+    void UpdatePosition()
+    {
+        velocity += accel;
+        var step =Vector3.ClampMagnitude(velocity * Time.deltaTime,1.0f);
+        position += step;
+    }
+
+そうか、直接ポジションいじるとうまく判定されないんだった。rigidbodyを触るのか...
+アルゴリズムの検証をしたいときにunityの物理はいらない。
+rigidbodyは外す。
+しかし、当たり判定は欲しい。（わがまま）
+
+Physics.CheckBox
+public static bool CheckBox (Vector3 center, Vector3 halfExtents, Quaternion orientation= Quaternion.identity, int layermask= DefaultRaycastLayers, QueryTriggerInteraction queryTriggerInteraction= QueryTriggerInteraction.UseGlobal);
+を使う。
+
+当たった場所で爆発を生成。
+当たったミサイルの中心座標で爆発を生成するとこのありさま。
+ミサイルとターゲットが重なった場所に爆発を出したい。
+
+そこで、
+Physics.BoxCast
+public static bool BoxCast (Vector3 center, Vector3 halfExtents, Vector3 direction, Quaternion orientation= Quaternion.identity, float maxDistance= Mathf.Infinity, int layerMask= DefaultRaycastLayers, QueryTriggerInteraction queryTriggerInteraction= QueryTriggerInteraction.UseGlobal);
+を使う。
+
+    void CheckHit2()
+    {
+        var t = transform;
+        RaycastHit hitInfo;
+        var direction = t.position - lastPosition;
+        var length = direction.magnitude;
+        var isHit = Physics.Raycast(lastPosition, direction, out hitInfo, length);
+        Debug.DrawRay(lastPosition, direction, Color.yellow, 1.0f);
+        if (isHit)
+        {
+            Explosion(hitInfo.point);
+        }
+    }
+
+イマイチ。
+爆発が下の方にでてしまった。Boxだからか...。しょうがないので線でやる。いや、やっぱりBoxは維持したい。
+爆発の位置を計算しよう。
+
+var point = hitInfo.collider.ClosestPoint(lastPosition);
+
+うまく行った！
+
+まだ、誘導していない！
+
+爆発にもコライダがついているから、爆発にあたって爆発がでる。
+せっかくだからそのままにする。
+
+誘導その1
+    void UpdateRotation()
+    {
+        var mp = transform.position;
+        var tp = target.Position;
+        Debug.DrawLine(mp, tp);
+        var v1 = tp - mp;
+        var r1 = Quaternion.LookRotation(v1, Vector3.up);
+        transform.rotation = r1;
+    }
+ターゲットのポジションと、自分のポジションのベクトルを作る。
+その方向に向けたクォータニオンを作る。
+セットする。
+即座にターゲットに向いて、飛んでいく。
+やはり、徐々に目標角度に向かわせたい。
+
+球面補間は割合で指定する。
+ var r = Quaternion.Slerp(mr, r1, rotateRatio);
+
+自分とターゲットのなす角によって回転量が変わってしまう。
+ミサイルの能力として回転速度を指定したい。(degree/sec)。
+目標角度と現在角度と回転能力から回転する割合を計算する。
+
+
+   static float CalcRotateRatio(Quaternion from, Quaternion to, float degreeSpeed)
+    {
+        var r1 = degreeSpeed * Mathf.Deg2Rad;
+        var r2 = Quaternion.Angle(from, to);
+        var ratio = 0.0f;
+
+        if (r2 < Mathf.Epsilon || r2 <= r1)
+        {
+            ratio = 1.0f;
+        }
+        else
+        {
+            ratio = r1 / r2;
+        }
+
+        Debug.Log($"{degreeSpeed} / {r2 * Mathf.Rad2Deg} = {ratio}");
+
+        return ratio;
+    }
+
+うまく動かない！！！
+ログを出してみる。
+10 / 7601.798 = 0.001315478
+r2が大きすぎる。
+???
+もしかして、こいつdegreeか？
+https://docs.unity3d.com/2018.1/Documentation/ScriptReference/Quaternion.Angle.html
+
+degreeだった。
+ついでに回転速度に Time.deltaTime を使用する。
+
+    static float CalcRotateRatio(Quaternion from, Quaternion to, float degreeSpeed)
+    {
+        var r1 = degreeSpeed * Time.deltaTime;
+        var r2 = Quaternion.Angle(from, to);
+        var ratio = 0.0f;
+
+        if (r2 < Mathf.Epsilon || r2 <= r1)
+        {
+            ratio = 1.0f;
+        }
+        else
+        {
+            ratio = r1 / r2;
+        }
+        return ratio;
+    }
+
+
+なんとか、指定角度で回転して当たるようになった。
+1秒に80度回転してうまくいけばあたる。
+
+
+ミサイルは最初速度0から始めていて、その時も回転しているが、加速するまではあまり加速してほしくない。
+    static float CalcRotateRatio2(Quaternion from, Quaternion to, float degreeSpeed, float speed)
+var adjusted = ratio * (speed * 20.0f)
+を追加。
+
+適当にランチャーとターゲットを動かして、適当に揺らぎを持たせて撃ちまくればかっこいい動画になるんじゃないか？
