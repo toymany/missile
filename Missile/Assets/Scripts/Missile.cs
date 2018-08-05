@@ -97,7 +97,12 @@ public class Missile : MonoBehaviour
         //Debug.DrawLine(mp, tp);
         var v1 = tp - mp;
         var from = t.rotation;
-        var to = Quaternion.LookRotation(v1, Vector3.up);
+
+        // 特定の方向でバグるのでやめる。
+        // var to = Quaternion.LookRotation(v1, Vector3.up);
+        // こっちなら大丈夫
+        var to = Quaternion.FromToRotation(Vector3.forward, v1);
+
 
         //var ratio = CalcRotateRatio1(from, to, rotateSpeed);
         var ratio = CalcRotateRatio2(from, to, rotateSpeed, this.speed);

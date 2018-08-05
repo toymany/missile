@@ -184,3 +184,8 @@ var adjusted = ratio * (speed * 20.0f)
 を追加。
 
 適当にランチャーとターゲットを動かして、適当に揺らぎを持たせて撃ちまくればかっこいい動画になるんじゃないか？
+
+
+ var to = Quaternion.LookRotation(v1, Vector3.up); だと特定の方向でバグるのでやめる。
+この場合だと Vector3.up (0,1,0) 方向。
+ var to = Quaternion.FromToRotation(Vector3.forward, v1);

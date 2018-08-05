@@ -13,28 +13,45 @@ public class CameraContoller : MonoBehaviour
     [SerializeField]
     Vector3 positionOffset;
 
+    [SerializeField]
+    Vector3 velocity;
 
     [SerializeField]
     Vector3 targetPosition;
+
     [SerializeField]
     Vector3 targetVelocity;
+
     [SerializeField]
-    float power = 0.1f;
+    float targetPower = 0.6f;
+
+    [SerializeField]
+    float positionPower = 0.6f;
 
 
 
     void Update()
     {
         var t = transform;
+
         {
-            t.position = player.TransformPoint(this.positionOffset);
+            var now = targetPosition;
+            var to = this.target.position;
+            targetPosition = Vector3.SmoothDamp(now, to, ref this.targetVelocity, this.targetPower);
         }
 
         {
-            var p1 = targetPosition;
-            var p2 = this.target.position;
-            targetPosition = Vector3.SmoothDamp(p1, p2, ref this.targetVelocity, this.power);
-            t.LookAt(targetPosition);
+            var now = t.position;
+            //var target_p = this.target.position;
+            var target_p = targetPosition;
+            var player_p = this.player.position;
+            var to_target = target_p - player_p;
+            var q1 = Quaternion.LookRotation(to_target, Vector3.up);
+            var to_p = player_p + q1 * positionOffset;
+            //t.position = Vector3.SmoothDamp(now, to_p, ref this.velocity, this.positionPower);
+            t.position = to_p;
         }
+
+        t.LookAt(targetPosition);
     }
 }
