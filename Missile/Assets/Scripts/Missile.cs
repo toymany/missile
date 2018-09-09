@@ -38,6 +38,14 @@ public class Missile : MonoBehaviour
         this.transform.SetPositionAndRotation(position, rotation);
         GetComponent<Renderer>().material.color = color;
         this.color = color;
+        var trail = this.GetComponentInChildren<TrailRenderer>();
+        if (trail != null)
+        {
+            trail.startColor = color;
+            trail.endColor = new Color(color.r, color.g, color.b, 0.0f);
+
+        }
+
     }
 
     void Update()
