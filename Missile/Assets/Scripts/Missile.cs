@@ -50,10 +50,17 @@ public class Missile : MonoBehaviour
 
     void Update()
     {
+        if (this.target == null) { return; }
         UpdateLife();
         UpdateRotation();
         UpdatePosition();
         CheckHit();
+    }
+
+    void Move1()
+    {
+        var step = Vector3.forward * this.speed * Time.deltaTime;
+        transform.position = transform.position + step;
     }
 
     void UpdateLife()
