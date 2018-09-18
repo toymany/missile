@@ -28,30 +28,28 @@ public class CameraContoller : MonoBehaviour
     [SerializeField]
     float positionPower = 0.6f;
 
-
-
     void Update()
     {
         var t = transform;
 
+        // ターゲットの位置を少し遅れてついていく
         {
-            var now = targetPosition;
+            var now = this.targetPosition;
             var to = this.target.position;
-            targetPosition = Vector3.SmoothDamp(now, to, ref this.targetVelocity, this.targetPower);
+            this.targetPosition = Vector3.SmoothDamp(now, to, ref this.targetVelocity, this.targetPower);
         }
 
+        // プレイヤーの位置とターゲットの位置からカメラの位置を決める
         {
             var now = t.position;
-            //var target_p = this.target.position;
-            var target_p = targetPosition;
+            var target_p = this.targetPosition;
             var player_p = this.player.position;
             var to_target = target_p - player_p;
             var q1 = Quaternion.LookRotation(to_target, Vector3.up);
-            var to_p = player_p + q1 * positionOffset;
-            //t.position = Vector3.SmoothDamp(now, to_p, ref this.velocity, this.positionPower);
+            var to_p = player_p + q1 * this.positionOffset;
             t.position = to_p;
         }
 
-        t.LookAt(targetPosition);
+        t.LookAt(this.targetPosition);
     }
 }
